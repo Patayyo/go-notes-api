@@ -1,0 +1,17 @@
+# bin/cache
+/bin/
+*.exe
+*.log
+*.out
+
+# IDE/OS
+.vscode/
+.idea/
+.DS_Store
+
+# GO stuff
+vendor/
+*.test
+
+# dotenv
+.env
