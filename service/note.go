@@ -13,9 +13,10 @@ type NoteService struct {
 type INoteService interface {
 	GetAllNotes() ([]model.Note, error)
 	GetNoteByID(id int) (model.Note, error)
-	CreateNote(note model.Note) (model.Note, error)
+	CreateNote(userID uint, note model.Note) (model.Note, error)
 	UpdateNote(id int, updated model.Note) (model.Note, error)
 	DeleteNote(id int) error
+	GetNotesByUserID(userID int) ([]model.Note, error)
 }
 
 func NewNoteService(r storage.NoteRepository) *NoteService {
@@ -34,10 +35,11 @@ func (s *NoteService) GetNoteByID(id int) (model.Note, error) {
 	return note, nil
 }
 
-func (s *NoteService) CreateNote(note model.Note) (model.Note, error) {
+func (s *NoteService) CreateNote(userID uint, note model.Note) (model.Note, error) {
 	if note.Title == "" && note.Content == "" {
 		return model.Note{}, errors.New("заголовок и содержание не могут быть пустыми")
 	}
+	note.UserID = userID
 	return s.Repo.Create(note)
 }
 
@@ -50,4 +52,8 @@ func (s *NoteService) UpdateNote(id int, updated model.Note) (model.Note, error)
 
 func (s *NoteService) DeleteNote(id int) error {
 	return s.Repo.Delete(id)
+}
+
+func (s *NoteService) GetNotesByUserID(userID int) ([]model.Note, error) {
+	return s.Repo.GetByUserID(userID)
 }

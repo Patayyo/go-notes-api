@@ -16,6 +16,8 @@ type NoteRepository interface {
 	Create(note model.Note) (model.Note, error)
 	Update(id int, updated model.Note) (model.Note, error)
 	Delete(id int) error
+
+	GetByUserID(userID int) ([]model.Note, error)
 }
 
 func NewPostgresStore(db *gorm.DB) *PostgresStore {
@@ -67,4 +69,10 @@ func (s *PostgresStore) Delete(id int) error {
 		return err
 	}
 	return nil
+}
+
+func (s *PostgresStore) GetByUserID(userID int) ([]model.Note, error) {
+	var notes []model.Note
+	err := s.DB.Where("user_id = ?", userID).Find(&notes).Error
+	return notes, err
 }

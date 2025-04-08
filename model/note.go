@@ -1,7 +1,9 @@
 package model
 
 type Note struct {
-	ID      int    `json:"id"`
+	ID      uint   `json:"id" gorm:"primarykey"`
+	UserID  uint   `json:"user_id"`
+	User    User   `json:"user" gorm:"foreignKey:UserID"`
 	Title   string `json:"title"`
 	Content string `json:"content"`
 }

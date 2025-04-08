@@ -3,18 +3,13 @@ package db
 import (
 	"fmt"
 	"log"
+	"notes-api/model"
 	"os"
 
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
-
-type Note struct {
-	ID      uint   `json:"id" gorm:"primarykey"`
-	Title   string `json:"title"`
-	Content string `json:"content"`
-}
 
 var DB *gorm.DB
 
@@ -38,5 +33,5 @@ func ConnectDB() {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	DB.AutoMigrate(&Note{})
+	DB.AutoMigrate(&model.Note{}, &model.User{})
 }
