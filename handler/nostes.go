@@ -15,6 +15,15 @@ type NoteHandler struct {
 	Store service.INoteService
 }
 
+// GetAll godoc
+// @Summary Получить все заметки текущего пользователя
+// @Tags notes
+// @Security ApiKeyAuth
+// @Produce json
+// @Success 200 {array} model.Note "Список заметок"
+// @Failure 401 {string} string "Пользователь не аутентифицирован"
+// @Failure 500 {string} string "Ошибка при получении заметок"
+// @Router /notes [get]
 func (h *NoteHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	rawUserID := r.Context().Value(middleware.UserIDKey)
 	userID, ok := rawUserID.(uint)
@@ -31,6 +40,16 @@ func (h *NoteHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(notes)
 }
 
+// GetByID godoc
+// @Summary Получить заметку по ID
+// @Tags notes
+// @Security ApiKeyAuth
+// @Produce json
+// @Param id path int true "ID заметки"
+// @Success 200 {object} model.Note "Заметка"
+// @Failure 400 {string} string "Неверный ID"
+// @Failure 404 {string} string "Заметка не найдена"
+// @Router /notes/{id} [get]
 func (h *NoteHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	idStr := vars["id"]
@@ -50,6 +69,16 @@ func (h *NoteHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(note)
 }
 
+// Create godoc
+// @Summary Создать новую заметку
+// @Tags notes
+// @Security ApiKeyAuth
+// @Accept json
+// @Produce json
+// @Param note body model.Note true "Данные заметки"
+// @Success 201 {object} model.Note "Созданная заметка"
+// @Failure 400 {string} string "Неверный запрос или ошибка валидации"
+// @Router /notes [post]
 func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 	rawUserID := r.Context().Value(middleware.UserIDKey)
 	userID, ok := rawUserID.(uint)
@@ -72,6 +101,19 @@ func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(created)
 }
 
+// Update godoc
+// @Summary Обновить заметку по ID (только владелец может обновить)
+// @Tags notes
+// @Security ApiKeyAuth
+// @Accept json
+// @Produce json
+// @Param id path int true "ID заметки"
+// @Param note body model.Note true "Обновлённые данные заметки"
+// @Success 200 {object} model.Note "Обновленная заметка"
+// @Failure 400 {string} string "Неверный запрос или ID"
+// @Failure 403 {string} string "Доступ запрещён"
+// @Failure 404 {string} string "Заметка не найдена"
+// @Router /notes/{id} [put]
 func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 	raw := r.Context().Value(middleware.UserIDKey)
 	userID, ok := raw.(uint)
@@ -113,6 +155,17 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(updatedNote)
 }
 
+// Delete godoc
+// @Summary Удалить заметку по ID (только владелец может удалить)
+// @Tags notes
+// @Security ApiKeyAuth
+// @Produce json
+// @Param id path int true "ID заметки"
+// @Success 200 {object} map[string]string "Сообщение об удалении"
+// @Failure 400 {string} string "Неверный ID"
+// @Failure 403 {string} string "Доступ запрещён"
+// @Failure 404 {string} string "Заметка не найдена"
+// @Router /notes/{id} [delete]
 func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	rawUserID := r.Context().Value(middleware.UserIDKey)
 	userID, ok := rawUserID.(uint)

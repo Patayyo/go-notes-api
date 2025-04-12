@@ -1,3 +1,13 @@
+// @title Notes API
+// @version 1.0
+// @description API для управления заметками пользователя.
+// @host localhost:8080
+// @BasePath /
+// @schemes http
+//
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
 package main
 
 import (
@@ -10,7 +20,10 @@ import (
 	storage "notes-api/repo"
 	"notes-api/service"
 
+	_ "notes-api/docs"
+
 	"github.com/gorilla/mux"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 func main() {
@@ -23,8 +36,10 @@ func main() {
 
 	r := mux.NewRouter()
 
+	r.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 	r.HandleFunc("/register", authHandler.Register).Methods("POST")
 	r.HandleFunc("/login", authHandler.Login).Methods("POST")
+	r.HandleFunc("/refresh", authHandler.Refresh).Methods("POST")
 
 	authRoutes := r.PathPrefix("/notes").Subrouter()
 	authRoutes.Use(middleware.JWTAuthMiddleware)

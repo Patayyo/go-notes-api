@@ -1,5 +1,7 @@
 package model
 
+// Note представляет заметку пользователя
+// @Description Модель заметки
 type Note struct {
 	ID      uint   `json:"id" gorm:"primarykey"`
 	UserID  uint   `json:"user_id"`

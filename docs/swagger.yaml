@@ -1,0 +1,283 @@
+basePath: /
+definitions:
+  auth.AuthInput:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  model.Note:
+    description: Модель заметки
+    properties:
+      content:
+        type: string
+      id:
+        type: integer
+      title:
+        type: string
+      user:
+        $ref: '#/definitions/model.User'
+      user_id:
+        type: integer
+    type: object
+  model.User:
+    description: Модель пользователя
+    properties:
+      email:
+        type: string
+      hash:
+        type: string
+      id:
+        type: integer
+      password:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API для управления заметками пользователя.
+  title: Notes API
+  version: "1.0"
+paths:
+  /login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные пользователя
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/auth.AuthInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Неверные данные
+          schema:
+            type: string
+      summary: Авторизация пользователя
+      tags:
+      - auth
+  /notes:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список заметок
+          schema:
+            items:
+              $ref: '#/definitions/model.Note'
+            type: array
+        "401":
+          description: Пользователь не аутентифицирован
+          schema:
+            type: string
+        "500":
+          description: Ошибка при получении заметок
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Получить все заметки текущего пользователя
+      tags:
+      - notes
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные заметки
+        in: body
+        name: note
+        required: true
+        schema:
+          $ref: '#/definitions/model.Note'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Созданная заметка
+          schema:
+            $ref: '#/definitions/model.Note'
+        "400":
+          description: Неверный запрос или ошибка валидации
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Создать новую заметку
+      tags:
+      - notes
+  /notes/{id}:
+    delete:
+      parameters:
+      - description: ID заметки
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Сообщение об удалении
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный ID
+          schema:
+            type: string
+        "403":
+          description: Доступ запрещён
+          schema:
+            type: string
+        "404":
+          description: Заметка не найдена
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Удалить заметку по ID (только владелец может удалить)
+      tags:
+      - notes
+    get:
+      parameters:
+      - description: ID заметки
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Заметка
+          schema:
+            $ref: '#/definitions/model.Note'
+        "400":
+          description: Неверный ID
+          schema:
+            type: string
+        "404":
+          description: Заметка не найдена
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Получить заметку по ID
+      tags:
+      - notes
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID заметки
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Обновлённые данные заметки
+        in: body
+        name: note
+        required: true
+        schema:
+          $ref: '#/definitions/model.Note'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Обновленная заметка
+          schema:
+            $ref: '#/definitions/model.Note'
+        "400":
+          description: Неверный запрос или ID
+          schema:
+            type: string
+        "403":
+          description: Доступ запрещён
+          schema:
+            type: string
+        "404":
+          description: Заметка не найдена
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Обновить заметку по ID (только владелец может обновить)
+      tags:
+      - notes
+  /refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh токен
+        in: body
+        name: input
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Ошибка токена
+          schema:
+            type: string
+      summary: Обновить access token
+      tags:
+      - auth
+  /register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные пользователя
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/auth.AuthInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный запрос
+          schema:
+            type: string
+      summary: Регистрация пользователя
+      tags:
+      - auth
+schemes:
+- http
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
