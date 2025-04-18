@@ -15,3 +15,7 @@ vendor/
 
 # dotenv
 .env
+
+# swagger
+docs/swagger/*
+!docs/swagger/index.html

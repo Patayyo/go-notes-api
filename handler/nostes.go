@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"notes-api/logger"
 	"notes-api/middleware"
 	"notes-api/model"
 	"notes-api/service"
@@ -28,16 +29,20 @@ func (h *NoteHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	rawUserID := r.Context().Value(middleware.UserIDKey)
 	userID, ok := rawUserID.(uint)
 	if !ok {
+		logger.Log.Warn("Пользователь не аутентифицирован")
 		http.Error(w, "Пользователь не аутентифицирован", http.StatusUnauthorized)
 		return
 	}
 
 	notes, err := h.Store.GetNotesByUserID(int(userID))
 	if err != nil {
+		logger.Log.WithError(err).WithField("user_id", userID).Error("Ошибка при получении заметок")
 		http.Error(w, "Ошибка при получении заметок", http.StatusInternalServerError)
 		return
 	}
 	json.NewEncoder(w).Encode(notes)
+
+	logger.Log.WithField("user_id", userID).Info("Получение всех заметок пользователя")
 }
 
 // GetByID godoc
@@ -56,17 +61,24 @@ func (h *NoteHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
+		logger.Log.WithError(err).Warn("Неверный ID")
 		http.Error(w, "Неверный ID", http.StatusBadRequest)
 		return
 	}
 
 	note, err := h.Store.GetNoteByID(id)
 	if err != nil {
+		logger.Log.WithError(err).Warn("Заметка не найдена")
 		http.Error(w, "Заметка не найдена", http.StatusNotFound)
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(note)
+
+	logger.Log.WithFields(logger.Fields{
+		"note_id": id,
+	}).Info("Заметка найдена и возвращена")
 }
 
 // Create godoc
@@ -83,22 +95,33 @@ func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 	rawUserID := r.Context().Value(middleware.UserIDKey)
 	userID, ok := rawUserID.(uint)
 	if !ok {
+		logger.Log.Warn("Пользователь не аутентифицирован")
 		http.Error(w, "Пользователь не аутентифицирован", http.StatusUnauthorized)
 		return
 	}
 
 	var note model.Note
 	if err := json.NewDecoder(r.Body).Decode(&note); err != nil {
+		logger.Log.Warn("Неверный запрос")
 		http.Error(w, "Неверный запрос", http.StatusBadRequest)
 		return
 	}
 	created, err := h.Store.CreateNote(userID, note)
 	if err != nil {
+		logger.Log.WithError(err).WithFields(logger.Fields{
+			"user_id": userID,
+			"note":    note,
+		}).Warn("Ошибка при создании заметки")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(created)
+
+	logger.Log.WithFields(logger.Fields{
+		"user_id": userID,
+		"note_id": created.ID,
+	}).Info("Заметка успешно создана")
 }
 
 // Update godoc
@@ -118,6 +141,7 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 	raw := r.Context().Value(middleware.UserIDKey)
 	userID, ok := raw.(uint)
 	if !ok {
+		logger.Log.Warn("Пользователь не авторизован")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -125,6 +149,7 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 	idStr := mux.Vars(r)["id"]
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
+		logger.Log.WithError(err).Warn("Неверный ID")
 		http.Error(w, "Неверный ID", http.StatusBadRequest)
 		return
 	}
@@ -132,27 +157,39 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 	var note model.Note
 	note, err = h.Store.GetNoteByID(id)
 	if err != nil {
+		logger.Log.WithError(err).Warn("Заметка не найдена")
 		http.Error(w, "Заметка не найдена", http.StatusNotFound)
 		return
 	}
 
 	if note.UserID != userID {
+		logger.Log.Warn("Доступ запрещён")
 		http.Error(w, "Доступ запрещен", http.StatusForbidden)
 		return
 	}
 
 	var updated model.Note
 	if err := json.NewDecoder(r.Body).Decode(&updated); err != nil {
+		logger.Log.WithError(err).Warn("Неверный запрос")
 		http.Error(w, "Неверный запрос", http.StatusBadRequest)
 		return
 	}
 
 	updatedNote, err := h.Store.UpdateNote(id, updated)
 	if err != nil {
+		logger.Log.WithError(err).WithFields(logger.Fields{
+			"id":   id,
+			"note": updated,
+		}).Warn("Ошибка при обновлении")
 		http.Error(w, "Ошибка при обновлении", http.StatusInternalServerError)
 		return
 	}
 	json.NewEncoder(w).Encode(updatedNote)
+
+	logger.Log.WithFields(logger.Fields{
+		"user_id": userID,
+		"note_id": id,
+	}).Info("Заметка успешно обновлена")
 }
 
 // Delete godoc
@@ -170,6 +207,7 @@ func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	rawUserID := r.Context().Value(middleware.UserIDKey)
 	userID, ok := rawUserID.(uint)
 	if !ok {
+		logger.Log.Warn("Пользователь не аутентифицирован")
 		http.Error(w, "Пользователь не аутентифицирован", http.StatusUnauthorized)
 		return
 	}
@@ -177,25 +215,34 @@ func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	idStr := mux.Vars(r)["id"]
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
+		logger.Log.WithError(err).Warn("Неверный ID")
 		http.Error(w, "Неверный ID", http.StatusBadRequest)
 		return
 	}
 
 	note, err := h.Store.GetNoteByID(id)
 	if err != nil {
+		logger.Log.WithError(err).Warn("Заметка не найдена")
 		http.Error(w, "Заметка не найдена", http.StatusNotFound)
 		return
 	}
 
 	if note.UserID != userID {
+		logger.Log.Warn("Доступ запрещён")
 		http.Error(w, "Доступ запрещен", http.StatusForbidden)
 		return
 	}
 
 	if err := h.Store.DeleteNote(id); err != nil {
+		logger.Log.WithError(err).WithField("id", id).Warn("Ошибка при удалении")
 		http.Error(w, "Ошибка при удалении", http.StatusInternalServerError)
 		return
 	}
 
 	json.NewEncoder(w).Encode(map[string]string{"message": "Заметка удалена"})
+
+	logger.Log.WithFields(logger.Fields{
+		"user_id": userID,
+		"note_id": id,
+	}).Info("Заметка успешно удалена")
 }

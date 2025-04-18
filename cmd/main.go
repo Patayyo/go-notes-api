@@ -16,6 +16,7 @@ import (
 	"notes-api/auth"
 	"notes-api/db"
 	"notes-api/handler"
+	"notes-api/logger"
 	"notes-api/middleware"
 	storage "notes-api/repo"
 	"notes-api/service"
@@ -27,6 +28,9 @@ import (
 )
 
 func main() {
+	logger.Init()
+	logger.Log.Info("Логгер инициализирован")
+
 	db.ConnectDB()
 	newStore := storage.NewPostgresStore(db.DB)
 	service := service.NewNoteService(newStore)
@@ -48,6 +52,10 @@ func main() {
 	authRoutes.HandleFunc("/{id}", h.GetByID).Methods("GET")
 	authRoutes.HandleFunc("/{id}", h.Update).Methods("PUT")
 	authRoutes.HandleFunc("/{id}", h.Delete).Methods("DELETE")
+
+	authProtected := r.NewRoute().Subrouter()
+	authProtected.Use(middleware.JWTAuthMiddleware)
+	authProtected.HandleFunc("/logout", authHandler.Logout).Methods("POST")
 
 	log.Println("Server started on :8080")
 	log.Fatal(http.ListenAndServe(":8080", r))

@@ -2,8 +2,10 @@ package auth
 
 import (
 	"errors"
+	"notes-api/logger"
 	"notes-api/model"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -20,8 +22,14 @@ func NewAuthService(db *gorm.DB) *AuthService {
 }
 
 func (s *AuthService) Register(email, password string) error {
-	if email == "" || password == "" {
-		return errors.New("email и пароль обязательны")
+	logger.Log.Infof("Попытка регистрации: %s", email)
+	if err := validateCredentials(email, password); err != nil {
+		return err
+	}
+
+	var existing model.User
+	if err := s.DB.Where("email = ?", email).First(&existing).Error; err == nil {
+		return errors.New("пользователь с таким email уже существует")
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -38,6 +46,7 @@ func (s *AuthService) Register(email, password string) error {
 }
 
 func (s *AuthService) Login(email, password string) (string, string, error) {
+	logger.Log.Infof("Попытка входа: %s", email)
 	var user model.User
 	if err := s.DB.Where("email = ?", email).First(&user).Error; err != nil {
 		return "", "", errors.New("пользователь не найден")
@@ -74,6 +83,11 @@ func (s *AuthService) Login(email, password string) (string, string, error) {
 		return "", "", err
 	}
 
+	user.RefreshTokenHash = refreshTokenString
+	if err := s.DB.Save(&user).Error; err != nil {
+		return "", "", err
+	}
+
 	return tokenString, refreshTokenString, nil
 }
 
@@ -89,7 +103,6 @@ func (s *AuthService) RefreshToken(refreshTokenString string) (string, error) {
 		}
 		return []byte(secret), nil
 	})
-
 	if err != nil || !token.Valid {
 		return "", errors.New("некорректный или просроченный токен")
 	}
@@ -99,12 +112,20 @@ func (s *AuthService) RefreshToken(refreshTokenString string) (string, error) {
 		return "", errors.New("невалидный payload токена")
 	}
 
-	userID := claims["user_id"]
-	email := claims["email"]
+	userID := uint(claims["user_id"].(float64))
+
+	var user model.User
+	if err := s.DB.First(&user, userID).Error; err != nil {
+		return "", errors.New("пользователь не найден")
+	}
+
+	if user.RefreshTokenHash != refreshTokenString {
+		return "", errors.New("refresh токен недействителен")
+	}
 
 	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": userID,
-		"email":   email,
+		"user_id": user.ID,
+		"email":   user.Email,
 		"exp":     time.Now().Add(2 * time.Hour).Unix(),
 	})
 
@@ -114,4 +135,29 @@ func (s *AuthService) RefreshToken(refreshTokenString string) (string, error) {
 	}
 
 	return newTokenString, nil
+}
+
+func (s *AuthService) Logout(userID uint) error {
+	return s.DB.Model(&model.User{}).Where("id = ?", userID).Update("refresh_token_hash", "").Error
+}
+
+func validateCredentials(email, password string) error {
+	if email == "" || password == "" {
+		return errors.New("email и пароль обязательны")
+	}
+
+	regex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+	if !regex.MatchString(email) {
+		return errors.New("неверный формат email")
+	}
+
+	if len(password) < 6 {
+		return errors.New("пароль должен содержать не менее 6 символов")
+	}
+
+	if len([]byte(password)) > 72 {
+		return errors.New("пароль не должен превышать 72 байта")
+	}
+
+	return nil
 }

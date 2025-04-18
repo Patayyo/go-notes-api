@@ -6,7 +6,6 @@ import (
 	"notes-api/model"
 	"os"
 
-	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -15,10 +14,10 @@ var DB *gorm.DB
 
 func ConnectDB() {
 	var err error
-	err = godotenv.Load()
+	/*err = godotenv.Load()
 	if err != nil {
 		log.Fatal("Ошибка загрузки .env файла")
-	}
+	}*/
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
 		os.Getenv("DB_HOST"),
